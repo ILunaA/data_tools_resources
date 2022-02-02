@@ -1,0 +1,158 @@
+# https://medium.com/analytics-vidhya/interactive-choropleth-map-in-python-using-folium-4e1479d9e568
+
+
+Interactive Choropleth map in Python using Folium
+
+Recently, I was working on a geodata analysis project where I required to create an interactive Chororpleth map with metrics overlayed on it. So, I thought of sharing my learning with you.
+
+So what’s a Choropleth map? Let’s understand it first. A choropleth is a type of thematic map in which areas are shaded or patterned in proportion to a statistical variable that represents an aggregate summary of a geographic characteristic within each area, such as population density, average income.
+
+After spending lots of hours watching online tutorials to get the simplest package to work on choropleth maps, and juggling on with the various libraries, I eventually landed on folium. I took some time to play around and explored different options; I finally got what I was looking for. Folium was the perfect fit for my task.
+
+To create choropleth maps all you need is a geoJson file that describes geographical features and a file that holds the details which are to be mapped.
+
+Enough of theoretical knowledge! Now it’s time to get our hands dirty with the actual stuff.
+
+    Importing libraries
+
+I am using a Jupyter notebook to perform all my coding part. Let’s start by importing all the necessary libraries. Here I will be working with pandas, geopandas, and folium.
+
+# importing all necessary libraries
+import folium
+import geopandas as gpd
+import pandas as pd
+
+Here’s a little overview-
+
+Folium: It allows us to visualize data and use that’s been manipulated in Python on an interactive leaflet map.
+
+2. Importing data dependencies
+
+Once all the libraries are installed, now it’s time to load our data dependencies into the notebook. As I am based in Sydney, I will be making a map of Sydney showing the average annual income of males and females by suburb. I found this dataset on the NSW data store and I must say that they did an amazing job making the data public and accessible. I downloaded the geoJson file from this location which will help to create a map.
+
+Let’s load both the datasets (.csv and .geoJson file).
+
+#Loading data dependencies using geopandas
+syd_geo = gpd.read_file("suburb-10-nsw.geojson")
+syd_geo.head(1)
+
+This is what my geo data frame looks like. Though I am only interested in getting suburb names (nsw_loca_2) and the geometry from this dataset. So here is my code for it:
+
+# Extracting suburb name and geometrysyd_geo=syd_geo[['nsw_loca_2','geometry']]
+
+Now let’s load our CSV file as well which holds the information of male and female income by suburb. We will use this information to create our choropleth map showing the average annual income of males and females in each suburb.
+
+# Loading data dependencies using pandassyd_income = pd.read_csv("Sydney_income_by_postcode.csv")
+
+3. Merge and create a geoPandas data frame
+
+Great! Since I am already sorted with all the necessary calculations in my income file and also we have both of our data frames in the notebook, now it’s time to merge our geodata with income dataset. Let’s take a look.
+
+# Make a geopandas data framesydgeo_gdf=syd_geo.merge(syd_income,on="nsw_loca_2")
+sydgeo_gdf.head(2)
+
+So this is how my final geo data frame looks like. Now we have everything in place, let’s proceed and create our map.
+
+4. Mapping
+
+When we are creating a folium map, it is important to tell where the map should be centered i.e. centroid coordinates to the map. So instead of assigning hard coded values based on the assumptions, we can assign the coordinates by taking the mean as under:
+
+# Assigning centroids to mapx_map=sydgeo_gdf.centroid.x.mean()
+y_map=sydgeo_gdf.centroid.y.mean()print(x_map,y_map)151.05959339241434 -33.81584647807083
+
+Once we have the centroids, we can now create the map object. Here I’m going to use CartoDB map tiles. It’s totally up to you how you want to create, also you can choose more than one tiles.
+
+# Creating a map objectsyd_inc_map = folium.Map(location=[y_map, x_map], zoom_start=6,tiles=None)folium.TileLayer('CartoDB positron',name="Light Map",control=False).add_to(syd_inc_map)
+
+So the stage has been set. Now we will apply geoJson overlay to the map by passing on following parameters:
+
+· geo_data: geopandas data frame using geographic geometry
+
+· data: Pandas data frame holding the values needed to show on the choropleth maps
+
+· columns: Columns containing a key and the values to be mapped
+
+· key_on: This is the variable present in the geoJson file to bind the data. It must start with ‘feature’
+
+· fill_color: You can pass hex colors, or any color palletes: ‘BuGn’, ‘BuPu’, ‘GnBu’, ‘OrRd’, ‘PuBu’, ‘PuBuGn’, ‘PuRd’, ‘RdPu’, ‘YlGn’, ‘YlGnBu’, ‘YlOrBr’, and ‘YlOrRd’.
+
+· fill_opacity: Area fill-opacity, range 0–1.
+
+· threshold_scale: can be passed to give a different threshold scale.
+
+Back to our notebook-
+
+# Creating choropleth mapsyd_inc_map.choropleth(geo_data=sydgeo_gdf,
+             name='Choropleth',         
+             data=sydgeo_gdf,
+             columns=['nsw_loca_2','Over all average taxable income of suburb'], 
+             key_on='feature.properties.nsw_loca_2', 
+             fill_color='YlOrRd',
+             fill_opacity=0.6, 
+             line_opacity=0.8,
+             legend_name='Over all average taxable income of suburb', 
+             smooth_factor=0,     
+             highlight=True
+                 )
+
+Let’s preview our map.
+
+Beautiful? We have successfully created a choropleth map with a proper legend showing a range of income. But wait, there’s still something missing! This map is completely static. How about adding some informative labels to the map?
+
+But the problem is we can’t add labels directly to the polygons because choropleth in folium doesn’t permit us to do that.
+
+But don’t get upset! Folium offers us the freedom to overlay the geographical features using folium.features.GeoJson.
+
+We will use the following parameters to add labels to our choropleth map-
+
+1) Tooltip
+
+2) sytle_function
+
+We will use the folium.features.GeoJson Tooltip method which allows accessing the properties we are keen to display as labels over the map. That’s how we can get the postcode, suburb name, and the average annual salary.
+
+# Adding labels to map
+style_function = lambda x: {'fillColor': '#ffffff', 
+                            'color':'#000000', 
+                            'fillOpacity': 0.1, 
+                            'weight': 0.1}SuburbName = folium.features.GeoJson(
+    sydgeo_gdf,
+    style_function=style_function, 
+    control=False,
+    tooltip=folium.features.GeoJsonTooltip(
+        fields=['Postcode'
+                ,'SuburbName'
+                ,'SA4_NAME'
+                ,'  Yearly average taxable income of Female   '
+                ,'  Yearly average taxable income of Male   '
+               ],
+        aliases=['Postcode: '
+                ,'SuburbName: '
+                ,'SA4_NAME: '
+                ,'  Yearly average taxable income of Female   : '
+                ,'  Yearly average taxable income of Male   : ' 
+                 ],
+        style=("background-color: white; color: #333333; font-family: arial; font-size: 12px; padding: 10px;") 
+    )
+)
+syd_inc_map.add_child(SuburbName)
+syd_inc_map.keep_in_front(SuburbName)
+folium.LayerControl().add_to(syd_inc_map)
+
+Labeled Choropleth Map
+
+Hurray..!! We made it..!!
+
+Last but not least we need to save the map. The below code will save the figure as .html
+
+# Saving mapsyd_inc_map.save("syd_inc_map.html")
+
+So that’s it. Here is our cool interactive choropleth map in python using folium. For code please feel free to download my Jupyter notebook present in my Git repository.
+
+You can also learn more about folium on https://python-visualization.github.io/folium/modules.html
+
+Data Source:
+
+Income data set: Australian Bureau of Statistics
+
+Geojson file: https://data.gov.au/dataset/ds-dga-91e70237-d9d1-4719-a82f-e71b811154c6/details

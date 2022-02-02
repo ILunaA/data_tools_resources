@@ -1,0 +1,5 @@
+#Spatial thoughts python foundation
+
+https://spatialthoughts.com/training/python-foundation-20220118/
+
+https://python-visualization.github.io/folium/modules.html
