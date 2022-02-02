@@ -1,0 +1,3 @@
+#Data Science at the Command Line
+Obtain, Scrub, Explore, and Model Data with Unix Power Tools 
+https://datascienceatthecommandline.com/2e/
